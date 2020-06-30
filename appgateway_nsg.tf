@@ -4,7 +4,7 @@ resource "azurerm_network_security_group" "nsg" {
   name                = local.nsg_name
   location            = var.rg_location
   resource_group_name = var.resource_group_name
-
+ 
   dynamic "security_rule" {
     for_each = var.security_rules
     content {
@@ -20,7 +20,7 @@ resource "azurerm_network_security_group" "nsg" {
       description                = security_rule.value.description
     }
   }
-
+ 
   timeouts {
     create = local.timeout_duration
     delete = local.timeout_duration

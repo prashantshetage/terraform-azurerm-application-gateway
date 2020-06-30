@@ -1,5 +1,17 @@
 // Required Variables
 //**********************************************************************************************
+variable "app_name" {
+  description = "(Required) for naming standard"
+  default     = ""
+}
+variable "env" {
+  description = "(Required) for naming standard"
+  default     = ""
+}
+variable "rg_location" {
+  description = "(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created."
+  type        = string
+}
 variable "resource_group_name" {
   description = "(Required) The name of the resource group in which to create the storage account. Changing this forces a new resource to be created."
   type        = string
@@ -12,20 +24,34 @@ variable "tags" {
   description = "(Required) A mapping of tags to assign to the resource."
   type        = map
 }
-
+ 
 # Gateway Subnet
 variable "virtual_network_name" {
   type        = string
   description = "(Required) The name of the virtual network to which to attach the subnet"
 }
-
-variable "address_prefix" {
-  type        = string
+ 
+variable "address_prefixes" {
+  type        = list(string)
   description = "(Required) The address prefixes to use for the subnet."
 }
+ 
+# Log Analytics Solution
+variable "solution_resource_group_name" {
+  description = "(Required) The name of the resource group in which to create the Log Analytics Solution"
+  type        = string
+}
+variable "workspace_resource_id" {
+  type        = string
+  description = "(Required) The full resource ID of the Log Analytics workspace with which the solution will be linked"
+}
+variable "workspace_name" {
+  type        = string
+  description = "(Required) The full name of the Log Analytics workspace with which the solution will be linked"
+}
 //**********************************************************************************************
-
-
+ 
+ 
 // Optional Variables
 //**********************************************************************************************
 # Application Gateway
@@ -238,7 +264,7 @@ variable "request_routing_rules" {
     }
   }
 }
-
+ 
 # Web Application Firewall
 variable "waf_configuration" {
   description = "(Required) Configuration block for WAF"
@@ -272,8 +298,8 @@ variable "waf_configuration" {
     exclusion                = {}
   }
 }
-
-# Gateway NSG 
+ 
+# Gateway NSG
 variable "security_rules" {
   type = map(object({
     name                       = string
@@ -339,7 +365,7 @@ variable "security_rules" {
     }
   }
 }
-
+ 
 # Gateway Public IP
 variable "pip_zones" {
   type        = list(string)
@@ -381,7 +407,7 @@ variable "reverse_fqdn" {
   description = "(Optional) A fully qualified domain name that resolves to this public IP address"
   default     = null
 }
-
+ 
 # Diagnostic Settings
 variable "diagnostics" {
   description = "(Optional) Diagnostic settings for those resources that support it."
@@ -391,16 +417,31 @@ variable "diagnostics" {
     metrics = ["AllMetrics"]
   }
 }
+ 
+# Log analytics solution
+variable "solutions" {
+  type = map(object({
+    publisher = string #(Required) The publisher of the solution
+    product   = string #(Required) The product name of the solution
+  }))
+  description = "(Required) A plan block"
+  default = {
+    AzureAppGatewayAnalytics = {
+      publisher = "Microsoft"
+      product   = "OMSGallery/AzureAppGatewayAnalytics"
+    }
+  }
+}
 //**********************************************************************************************
-
-
+ 
+ 
 // Local Values
 //**********************************************************************************************
 locals {
   timeout_duration            = "1h"
   timeout_duration_appgateway = "3h"
   appgateway_name             = "appgw-${var.env}-${var.app_name}"
-  subnet_name                 = "vnet-subnet-${var.env}-${var.app_name}"
+  subnet_name                 = "vnet-subnet-${var.env}-${var.app_name}-appgw"
   nsg_name                    = "nsg-appgw_subnet-${var.env}-${var.app_name}-network"
   pip_name                    = "appgw-vnet-${var.env}-${var.app_name}"
 }
