@@ -3,7 +3,7 @@
 resource "azurerm_public_ip" "public_ip" {
   name                    = local.pip_name
   resource_group_name     = var.resource_group_name
-  location                = var.rg_location
+  location                = var.location
   allocation_method       = var.allocation_method
   sku                     = var.pip_sku
   ip_version              = var.ip_version
@@ -11,11 +11,18 @@ resource "azurerm_public_ip" "public_ip" {
   domain_name_label       = var.domain_name_label
   reverse_fqdn            = var.reverse_fqdn
   zones                   = var.pip_zones
- 
+
   public_ip_prefix_id = var.public_ip_prefix_id
- 
-  tags = var.tags
- 
+
+  tags       = merge(var.resource_tags, var.deployment_tags)
+  depends_on = [var.it_depends_on]
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+    ]
+  }
+
   timeouts {
     create = local.timeout_duration
     delete = local.timeout_duration
@@ -23,11 +30,12 @@ resource "azurerm_public_ip" "public_ip" {
 }
 //**********************************************************************************************
 
-// Route table
+
+/* // Route table
 //**********************************************************************************************
 resource "azurerm_route_table" "appgw_route_table" {
   name                          = "rt-appgw-default"
-  location                      = var.rg_location
+  location                      = var.location
   resource_group_name           = var.resource_group_name
   disable_bgp_route_propagation = true
  
@@ -85,29 +93,43 @@ resource "azurerm_subnet_route_table_association" "appgw_rt_associate" {
   }
 }
 //**********************************************************************************************
- 
+*/
+
 // Subnet for Application Gateway
 //**********************************************************************************************
 resource "azurerm_subnet" "appgateway" {
-  name                 = local.subnet_name
-  resource_group_name  = var.resource_group_name
-  virtual_network_name = var.virtual_network_name
-  address_prefixes     = var.address_prefixes
- 
+  name                                           = local.subnet_name
+  resource_group_name                            = var.resource_group_name
+  virtual_network_name                           = var.virtual_network_name
+  address_prefixes                               = var.address_prefixes
+  service_endpoints                              = var.service_endpoints
+  enforce_private_link_endpoint_network_policies = var.enforce_private_link_endpoint_network_policies
+  enforce_private_link_service_network_policies  = var.enforce_private_link_service_network_policies
+
+  depends_on = [var.it_depends_on]
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+    ]
+  }
+
   timeouts {
     create = local.timeout_duration
     delete = local.timeout_duration
   }
 }
 //**********************************************************************************************
- 
- 
+
+
 // Associate subnet to NSG
 //**********************************************************************************************
 resource "azurerm_subnet_network_security_group_association" "nsg_association_private" {
   subnet_id                 = azurerm_subnet.appgateway.id
   network_security_group_id = azurerm_network_security_group.nsg.id
- 
+
+  depends_on = [var.it_depends_on]
+
   timeouts {
     create = local.timeout_duration
     delete = local.timeout_duration

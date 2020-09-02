@@ -1,59 +1,53 @@
 // Required Variables
 //**********************************************************************************************
-variable "app_name" {
-  description = "(Required) for naming standard"
-  default     = ""
-}
-variable "env" {
-  description = "(Required) for naming standard"
-  default     = ""
-}
-variable "rg_location" {
-  description = "(Required) Specifies the supported Azure location where the resource exists. Changing this forces a new resource to be created."
-  type        = string
-}
 variable "resource_group_name" {
-  description = "(Required) The name of the resource group in which to create the storage account. Changing this forces a new resource to be created."
   type        = string
+  description = "(Required) The name of the resource group in which to the Application Gateway should exist"
 }
-variable "oms_id" {
+
+variable "location" {
   type        = string
-  description = "(Required) The id of your OMS workspace to send your logs to."
+  description = "(Required) The Azure region where the Application Gateway should exist. Changing this forces a new resource to be created"
 }
-variable "tags" {
-  description = "(Required) A mapping of tags to assign to the resource."
-  type        = map
+
+variable "name" {
+  type        = string
+  description = "(Required) The name of the Application Gateway"
 }
- 
-# Gateway Subnet
+
+// Required Pre-requisites
+# Subnet
 variable "virtual_network_name" {
   type        = string
   description = "(Required) The name of the virtual network to which to attach the subnet"
 }
- 
+
 variable "address_prefixes" {
   type        = list(string)
-  description = "(Required) The address prefixes to use for the subnet."
+  description = "(Required) The address prefixes to use for the subnet"
 }
- 
-# Log Analytics Solution
-variable "solution_resource_group_name" {
-  description = "(Required) The name of the resource group in which to create the Log Analytics Solution"
-  type        = string
-}
-variable "workspace_resource_id" {
-  type        = string
-  description = "(Required) The full resource ID of the Log Analytics workspace with which the solution will be linked"
-}
-variable "workspace_name" {
-  type        = string
-  description = "(Required) The full name of the Log Analytics workspace with which the solution will be linked"
-}
-//**********************************************************************************************
- 
- 
+
+
 // Optional Variables
 //**********************************************************************************************
+// Optional Pre-requisites
+# Subnet
+variable "service_endpoints" {
+  type        = list(string)
+  description = "(Optional) The list of Service endpoints to associate with the subnet"
+  default     = []
+}
+variable "enforce_private_link_endpoint_network_policies" {
+  type        = bool
+  description = "(Optional) Enable or Disable network policies for the private link endpoint on the subnet"
+  default     = false
+}
+variable "enforce_private_link_service_network_policies" {
+  type        = bool
+  description = "(Optional) Enable or Disable network policies for the private link service on the subnet"
+  default     = false
+}
+
 # Application Gateway
 variable "sku" {
   description = "(Optional)"
@@ -117,8 +111,8 @@ variable "gateway_ip_configurations" {
 variable "frontend_ports" {
   description = "(Required) One or more frontend_port blocks"
   type = map(object({
-    name = string
-    port = number
+    name = string #(Required) The name of the Frontend Port
+    port = number #(Required) The port used for this Frontend Port
   }))
   default = {
     frontend-port1 = {
@@ -130,11 +124,11 @@ variable "frontend_ports" {
 variable "frontend_ip_configurations" {
   description = "(Required) One or more frontend_ip_configuration blocks"
   type = map(object({
-    name                          = string
-    subnet_id                     = string
-    public_ip_address_id          = string
-    private_ip_address            = string
-    private_ip_address_allocation = string
+    name                          = string #(Required) The name of the Frontend IP Configuration
+    subnet_id                     = string #(Optional) The ID of the Subnet
+    public_ip_address_id          = string #(Optional) The ID of a Public IP Address which the Application Gateway should use
+    private_ip_address            = string #(Optional) The Private IP Address to use for the Application Gateway
+    private_ip_address_allocation = string #(Optional) The Allocation Method for the Private IP Address. Possible values are Dynamic and Static
   }))
   default = {
     public = {
@@ -156,9 +150,9 @@ variable "frontend_ip_configurations" {
 variable "backend_address_pools" {
   description = "(Required) One or more backend_address_pool blocks"
   type = map(object({
-    name         = string
-    fqdns        = list(string)
-    ip_addresses = list(string)
+    name         = string       #(Required) The name of the Backend Address Pool
+    fqdns        = list(string) #(Optional) A list of FQDN's which should be part of the Backend Address Pool
+    ip_addresses = list(string) #(Optional) A list of IP Addresses which should be part of the Backend Address Pool
   }))
   default = {
     backend-pool1 = {
@@ -169,25 +163,26 @@ variable "backend_address_pools" {
   }
 }
 variable "backend_http_settings" {
-  description = "(Required)"
+  description = "(Required) One or more backend_http_settings blocks "
   type = map(object({
-    cookie_based_affinity               = string
-    affinity_cookie_name                = string
-    name                                = string
-    path                                = string
-    port                                = number
-    probe_name                          = string
-    protocol                            = string
-    request_timeout                     = number # default=20
-    host_name                           = string
-    pick_host_name_from_backend_address = bool
-    trusted_root_certificate_names      = list(string)
+    cookie_based_affinity               = string       #(Required) Is Cookie-Based Affinity enabled?
+    affinity_cookie_name                = string       #(Optional) The name of the affinity cookie
+    name                                = string       #(Required) The name of the Backend HTTP Settings Collection
+    path                                = string       #(Optional) The Path which should be used as a prefix for all HTTP requests
+    port                                = number       #(Required) The port which should be used for this Backend HTTP Settings Collection
+    probe_name                          = string       #(Optional) The name of an associated HTTP Probe
+    protocol                            = string       #(Required) The Protocol which should be used. Possible values are Http and Https
+    request_timeout                     = number       #(Required) The request timeout in seconds, which must be between 1 and 86400 seconds
+    host_name                           = string       #(Optional) Host header to be sent to the backend servers. Cannot be set if pick_host_name_from_backend_address is set to true
+    pick_host_name_from_backend_address = bool         #(Optional) Whether host header should be picked from the host name of the backend server
+    trusted_root_certificate_names      = list(string) #(Optional) A list of trusted_root_certificate names
     authentication_certificate = map(object({
-      name = string
+      name = string #(Required) The Name of the Authentication Certificate to use
+      data = string #(Required) The contents of the Authentication Certificate which should be used
     }))
     connection_draining = object({
-      enabled           = bool
-      drain_timeout_sec = number
+      enabled           = bool   #(Required) If connection draining is enabled or not
+      drain_timeout_sec = number #(Required) The number of seconds connection draining is active. Acceptable values are from 1 second to 3600 seconds
     })
   }))
   default = {
@@ -214,16 +209,18 @@ variable "backend_http_settings" {
 variable "http_listeners" {
   description = "(Required) One or more http_listener blocks"
   type = map(object({
-    name                           = string
-    frontend_ip_configuration_name = string
-    frontend_port_name             = string
-    protocol                       = string
-    host_name                      = string # For multi-site/PathBasedRouting routing to backends
-    require_sni                    = bool   # Defult=false
-    ssl_certificate_name           = string # Optional
+    name                           = string       #(Required) The Name of the HTTP Listener
+    frontend_ip_configuration_name = string       #(Required) The Name of the Frontend IP Configuration used for this HTTP Listener
+    frontend_port_name             = string       #(Required) The Name of the Frontend Port use for this HTTP Listener
+    protocol                       = string       #(Required) The Protocol to use for this HTTP Listener. Possible values are Http and Https
+    host_name                      = string       #(Optional) The Hostname which should be used for this HTTP Listener
+    host_names                     = list(string) #(Optional) A list of Hostname(s) should be used for this HTTP Listener. It allows special wildcard characters
+    require_sni                    = bool         #(Optional) Should Server Name Indication be Required? Defaults to false
+    ssl_certificate_name           = string       #(Optional) The name of the associated SSL Certificate which should be used for this HTTP Listener
+    firewall_policy_id             = string       #(Optional) The ID of the Web Application Firewall Policy which should be used as a HTTP Listener
     custom_error_configuration = map(object({
-      status_code           = string
-      custom_error_page_url = string
+      status_code           = string #(Required) Status code of the application gateway customer error. Possible values are HttpStatus403 and HttpStatus502
+      custom_error_page_url = string #(Required) Error page URL of the application gateway customer error
     }))
   }))
   default = {
@@ -233,8 +230,10 @@ variable "http_listeners" {
       frontend_port_name             = "frontend-port1"
       protocol                       = "Http"
       host_name                      = null
+      host_names                     = null
       require_sni                    = false
       ssl_certificate_name           = null
+      firewall_policy_id             = null
       custom_error_configuration     = {}
     }
   }
@@ -242,14 +241,14 @@ variable "http_listeners" {
 variable "request_routing_rules" {
   description = "(Required) One or more request_routing_rule blocks"
   type = map(object({
-    name                        = string
-    rule_type                   = string
-    http_listener_name          = string
-    backend_address_pool_name   = string # Optional
-    backend_http_settings_name  = string # Optional
-    redirect_configuration_name = string # Optional
-    rewrite_rule_set_name       = string # Optional
-    url_path_map_name           = string # Optional
+    name                        = string #(Required) The Name of this Request Routing Rule
+    rule_type                   = string #(Required) The Type of Routing that should be used for this Rule. Possible values are Basic and PathBasedRouting
+    http_listener_name          = string #(Required) The Name of the HTTP Listener which should be used for this Routing Rule
+    backend_address_pool_name   = string #(Optional) The Name of the Backend Address Pool which should be used for this Routing Rule
+    backend_http_settings_name  = string #(Optional) The Name of the Backend HTTP Settings Collection which should be used for this Routing Rule
+    redirect_configuration_name = string #(Optional) The Name of the Redirect Configuration which should be used for this Routing Rule
+    rewrite_rule_set_name       = string #(Optional) The Name of the Rewrite Rule Set which should be used for this Routing Rule. Only valid for v2 SKUs
+    url_path_map_name           = string #(Optional) The Name of the URL Path Map which should be associated with this Routing Rule
   }))
   default = {
     req-route-rule1 = {
@@ -264,26 +263,26 @@ variable "request_routing_rules" {
     }
   }
 }
- 
+
 # Web Application Firewall
 variable "waf_configuration" {
   description = "(Required) Configuration block for WAF"
   type = object({
-    enabled                  = bool
-    firewall_mode            = string
-    rule_set_type            = string
-    rule_set_version         = string
-    file_upload_limit_mb     = number
-    max_request_body_size_kb = number
-    request_body_check       = bool
+    enabled                  = bool    #(Required) Is the Web Application Firewall be enabled?
+    firewall_mode            = string  #(Required) The Web Application Firewall Mode. Possible values are Detection and Prevention 
+    rule_set_type            = string  #(Required) The Type of the Rule Set used for this Web Application Firewall. Currently, only OWASP is supported
+    rule_set_version         = string  #(Required) The Version of the Rule Set used for this Web Application Firewall. Possible values are 2.2.9, 3.0, and 3.1
+    file_upload_limit_mb     = number  #(Optional) The File Upload Limit in MB. Accepted values are in the range 1MB to 500MB. Defaults to 100MB
+    max_request_body_size_kb = number  #(Optional) The Maximum Request Body Size in KB. Accepted values are in the range 1KB to 128KB. Defaults to 128KB
+    request_body_check       = bool    #(Optional) Is Request Body Inspection enabled? Defaults to true
     disabled_rule_group = map(object({ # (Optional) one or more disabled_rule_group blocks
-      rule_group_name = list(string)
-      rules           = list(string)
+      rule_group_name = list(string)   #(Required) The rule group where specific rules should be disabled.
+      rules           = list(string)   #(Optional) A list of rules which should be disabled in that group. Disables all rules in the specified group if rules is not specified
     }))
-    exclusion = map(object({ #(Optional) one or more exclusion blocks as defined below
-      match_variable          = string
-      selector_match_operator = string
-      selector                = string
+    exclusion = map(object({           #(Optional) one or more exclusion blocks as defined below
+      match_variable          = string #(Required) Match variable of the exclusion rule to exclude header, cookie or GET arguments
+      selector_match_operator = string #(Optional) Operator which will be used to search in the variable content
+      selector                = string #(Optional) String value which will be used for the filter operation
     }))
   })
   default = {
@@ -298,7 +297,7 @@ variable "waf_configuration" {
     exclusion                = {}
   }
 }
- 
+
 # Gateway NSG
 variable "security_rules" {
   type = map(object({
@@ -365,8 +364,8 @@ variable "security_rules" {
     }
   }
 }
- 
-# Gateway Public IP
+
+# Public IP
 variable "pip_zones" {
   type        = list(string)
   description = "(Optional) A collection containing the availability zone to allocate the Public IP in"
@@ -407,42 +406,59 @@ variable "reverse_fqdn" {
   description = "(Optional) A fully qualified domain name that resolves to this public IP address"
   default     = null
 }
- 
-# Diagnostic Settings
-variable "diagnostics" {
-  description = "(Optional) Diagnostic settings for those resources that support it."
-  type        = object({ logs = list(string), metrics = list(string) })
-  default = {
-    logs    = ["ApplicationGatewayAccessLog", "ApplicationGatewayPerformanceLog", "ApplicationGatewayFirewallLog"]
-    metrics = ["AllMetrics"]
-  }
+
+variable "appgateway_prefix" {
+  type        = string
+  description = "(Required) Prefix for the appgateway name"
+  default     = ""
 }
- 
-# Log analytics solution
-variable "solutions" {
-  type = map(object({
-    publisher = string #(Required) The publisher of the solution
-    product   = string #(Required) The product name of the solution
-  }))
-  description = "(Required) A plan block"
-  default = {
-    AzureAppGatewayAnalytics = {
-      publisher = "Microsoft"
-      product   = "OMSGallery/AzureAppGatewayAnalytics"
-    }
-  }
+
+variable "appgateway_suffix" {
+  type        = string
+  description = "(Optional) Suffix for the appgateway name"
+  default     = ""
+}
+
+variable "resource_tags" {
+  type        = map(string)
+  description = "(Optional) Tags for the resources"
+  default     = {}
+}
+
+variable "deployment_tags" {
+  type        = map(string)
+  description = "(Optional) Additional Tags for the deployment"
+  default     = {}
+}
+
+variable "it_depends_on" {
+  type        = any
+  description = "(Optional) To define explicit dependencies if required"
+  default     = null
+}
+
+variable "timeout" {
+  type        = string
+  description = "(Optional) Timeout"
+  default     = "30m"
+}
+
+variable "appgateway_timeout" {
+  type        = string
+  description = "(Optional) Timeout"
+  default     = "90m"
 }
 //**********************************************************************************************
- 
- 
+
+
 // Local Values
 //**********************************************************************************************
 locals {
-  timeout_duration            = "1h"
-  timeout_duration_appgateway = "3h"
-  appgateway_name             = "appgw-${var.env}-${var.app_name}"
-  subnet_name                 = "vnet-subnet-${var.env}-${var.app_name}-appgw"
-  nsg_name                    = "nsg-appgw_subnet-${var.env}-${var.app_name}-network"
-  pip_name                    = "appgw-vnet-${var.env}-${var.app_name}"
+  timeout_duration            = var.timeout
+  timeout_duration_appgateway = var.appgateway_timeout
+  appgateway_name             = "${var.appgateway_prefix}${var.name}${var.appgateway_suffix}"
+  subnet_name                 = "${local.appgateway_name}-subnet"
+  nsg_name                    = "${local.appgateway_name}-nsg"
+  pip_name                    = "${local.appgateway_name}-pip"
 }
 //**********************************************************************************************
