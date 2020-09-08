@@ -108,11 +108,10 @@ resource "azurerm_subnet" "appgateway" {
 
   depends_on = [var.it_depends_on]
 
-  lifecycle {
+  /* lifecycle {
     ignore_changes = [
-      tags,
     ]
-  }
+  }*/
 
   timeouts {
     create = local.timeout_duration
