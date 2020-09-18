@@ -226,7 +226,7 @@ variable "http_listeners" {
   default = {
     listener1 = {
       name                           = "listener1"
-      frontend_ip_configuration_name = "private"
+      frontend_ip_configuration_name = "public"
       frontend_port_name             = "frontend-port1"
       protocol                       = "Http"
       host_name                      = null
