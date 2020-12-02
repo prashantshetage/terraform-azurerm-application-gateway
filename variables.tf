@@ -374,9 +374,27 @@ variable "security_rules" {
       destination_application_security_group_ids = null
       description                                = "HTTP access from anywhere"
     },
+    allow_https = {
+      name                                       = "AllowHTTPS"
+      priority                                   = 130
+      direction                                  = "Inbound"
+      access                                     = "Allow"
+      protocol                                   = "tcp"
+      source_port_range                          = "*"
+      source_port_ranges                         = null
+      destination_port_range                     = null
+      destination_port_ranges                    = ["443"]
+      source_address_prefix                      = "0.0.0.0/0"
+      source_address_prefixes                    = null
+      destination_address_prefix                 = "*"
+      destination_address_prefixes               = null
+      source_application_security_group_ids      = null
+      destination_application_security_group_ids = null
+      description                                = "HTTPS access from anywhere"
+    },
     DenyInternet = {
       name                                       = "DenyInternet"
-      priority                                   = 130
+      priority                                   = 140
       direction                                  = "Inbound"
       access                                     = "Deny"
       protocol                                   = "*"
@@ -394,7 +412,7 @@ variable "security_rules" {
     },
     VirtualNetwork = {
       name                                       = "VirtualNetwork"
-      priority                                   = 140
+      priority                                   = 150
       direction                                  = "Inbound"
       access                                     = "Allow"
       protocol                                   = "tcp"
