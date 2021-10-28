@@ -432,10 +432,10 @@ variable "security_rules" {
 }
 
 # Public IP
-variable "pip_zones" {
-  type        = list(string)
-  description = "(Optional) A collection containing the availability zone to allocate the Public IP in"
-  default     = []
+variable "availability_zone" {
+  type        = string
+  description = "(Optional) The availability zone to allocate the Public IP"
+  default     = "Zone-Redundant"
 }
 variable "pip_sku" {
   type        = string
