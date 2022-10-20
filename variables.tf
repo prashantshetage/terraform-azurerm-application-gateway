@@ -10,9 +10,14 @@ variable "location" {
   description = "(Required) The Azure region where the Application Gateway should exist. Changing this forces a new resource to be created"
 }
 
-variable "name" {
+variable "location_suffix" {
   type        = string
-  description = "(Required) The name of the Application Gateway"
+  description = "(Optional) Shortened value for Location"
+  default     = ""
+}
+
+variable "appgateway_name" {
+  type = string
 }
 
 // Required Pre-requisites
@@ -37,12 +42,17 @@ variable "service_endpoints" {
   description = "(Optional) The list of Service endpoints to associate with the subnet"
   default     = []
 }
-variable "enforce_private_link_endpoint_network_policies" {
+variable "private_endpoint_network_policies_enabled" {
+  type        = bool
+  description = "(Optional) Enable or Disable network policies for the private endpoint on the subnet"
+  default     = false
+}
+/* variable "enforce_private_link_endpoint_network_policies" {
   type        = bool
   description = "(Optional) Enable or Disable network policies for the private link endpoint on the subnet"
   default     = false
-}
-variable "enforce_private_link_service_network_policies" {
+} */
+variable "private_link_service_network_policies_enabled" {
   type        = bool
   description = "(Optional) Enable or Disable network policies for the private link service on the subnet"
   default     = false
@@ -76,7 +86,7 @@ variable "autoscale_configurations" {
 variable "zones" {
   type        = list(string)
   description = "(Optional) A collection of availability zones to spread the Application Gateway over"
-  default     = ["1", "2", "3"]
+  default     = []
 }
 variable "enable_http2" {
   type        = bool
@@ -206,6 +216,10 @@ variable "backend_http_settings" {
     }
   }
 }
+variable "ssl_certificate" {
+  type    = any
+  default = {}
+}
 variable "http_listeners" {
   description = "(Required) One or more http_listener blocks"
   type = map(object({
@@ -249,6 +263,7 @@ variable "request_routing_rules" {
     redirect_configuration_name = string #(Optional) The Name of the Redirect Configuration which should be used for this Routing Rule
     rewrite_rule_set_name       = string #(Optional) The Name of the Rewrite Rule Set which should be used for this Routing Rule. Only valid for v2 SKUs
     url_path_map_name           = string #(Optional) The Name of the URL Path Map which should be associated with this Routing Rule
+    priority                    = number
   }))
   default = {
     req-route-rule1 = {
@@ -260,6 +275,7 @@ variable "request_routing_rules" {
       redirect_configuration_name = null
       rewrite_rule_set_name       = null
       url_path_map_name           = null
+      priority                    = 1
     }
   }
 }
@@ -299,6 +315,11 @@ variable "waf_configuration" {
 }
 
 # Gateway NSG
+variable "deploy_nsg" {
+  description = "(Optional) Deploy Network security group?"
+  type        = bool
+  default     = false
+}
 variable "security_rules" {
   type = map(object({
     name                                       = string       #(Required) The name of the security rule
@@ -431,16 +452,22 @@ variable "security_rules" {
   }
 }
 
+variable "identity_ids" {
+  type        = list(string)
+  description = "(Optional) Specifies a list with a single user managed identity id to be assigned to the Application Gateway"
+  default     = []
+}
+
 # Public IP
 variable "availability_zone" {
-  type        = string
+  type        = list(string)
   description = "(Optional) The availability zone to allocate the Public IP"
-  default     = "Zone-Redundant"
+  default     = []
 }
 variable "pip_sku" {
   type        = string
   description = "(Optional) The SKU of the Public IP"
-  default     = "standard"
+  default     = "Standard"
 }
 variable "allocation_method" {
   type        = string
@@ -476,31 +503,18 @@ variable "reverse_fqdn" {
 variable "appgateway_prefix" {
   type        = string
   description = "(Required) Prefix for the appgateway name"
-  default     = ""
+  default     = "agw"
 }
 
-variable "appgateway_suffix" {
+variable "postfix" {
   type        = string
-  description = "(Optional) Suffix for the appgateway name"
-  default     = ""
+  description = "(Required) Unique identifies for the resource"
 }
 
-variable "resource_tags" {
+variable "tags" {
   type        = map(string)
-  description = "(Optional) Tags for the resources"
+  description = "(Optional) Tags for resources"
   default     = {}
-}
-
-variable "deployment_tags" {
-  type        = map(string)
-  description = "(Optional) Additional Tags for the deployment"
-  default     = {}
-}
-
-variable "it_depends_on" {
-  type        = any
-  description = "(Optional) To define explicit dependencies if required"
-  default     = null
 }
 
 variable "timeout" {
@@ -513,18 +527,5 @@ variable "appgateway_timeout" {
   type        = string
   description = "(Optional) Timeout"
   default     = "90m"
-}
-//**********************************************************************************************
-
-
-// Local Values
-//**********************************************************************************************
-locals {
-  timeout_duration            = var.timeout
-  timeout_duration_appgateway = var.appgateway_timeout
-  appgateway_name             = "${var.appgateway_prefix}${var.name}${var.appgateway_suffix}"
-  subnet_name                 = "${local.appgateway_name}-subnet"
-  nsg_name                    = "${local.appgateway_name}-nsg"
-  pip_name                    = "${local.appgateway_name}-pip"
 }
 //**********************************************************************************************

@@ -12,6 +12,22 @@ resource "azurerm_application_gateway" "application_gateway" {
     capacity = var.sku.capacity
   }
 
+  ssl_policy {
+    policy_type          = "Predefined"
+    policy_name          = "AppGwSslPolicy20170401S"
+    min_protocol_version = "TLSv1_2"
+  }
+
+  dynamic "ssl_certificate" {
+    for_each = var.ssl_certificate
+    content {
+      name                = ssl_certificate.value.name
+      data                = lookup(ssl_certificate.value, "data", null)
+      password            = lookup(ssl_certificate.value, "password", null)
+      key_vault_secret_id = lookup(ssl_certificate.value, "key_vault_secret_id", null)
+    }
+  }
+
   autoscale_configuration {
     min_capacity = var.autoscale_configurations.min_capacity
     max_capacity = var.autoscale_configurations.max_capacity
@@ -112,6 +128,7 @@ resource "azurerm_application_gateway" "application_gateway" {
       redirect_configuration_name = request_routing_rule.value.redirect_configuration_name
       rewrite_rule_set_name       = request_routing_rule.value.rewrite_rule_set_name
       url_path_map_name           = request_routing_rule.value.url_path_map_name
+      priority                    = request_routing_rule.value.priority
     }
   }
 
@@ -128,35 +145,45 @@ resource "azurerm_application_gateway" "application_gateway" {
   }
 
   # WAF Configurations
-  waf_configuration {
-    enabled                  = var.waf_configuration.enabled
-    firewall_mode            = var.waf_configuration.firewall_mode
-    rule_set_type            = var.waf_configuration.rule_set_type
-    rule_set_version         = var.waf_configuration.rule_set_version
-    file_upload_limit_mb     = var.waf_configuration.file_upload_limit_mb
-    max_request_body_size_kb = var.waf_configuration.max_request_body_size_kb
-    request_body_check       = var.waf_configuration.request_body_check
+  dynamic "waf_configuration" {
+    for_each = contains(["WAF_Medium", "WAF_Large", "WAF_v2"], var.sku.name) ? [1] : []
+    content {
+      enabled                  = var.waf_configuration.enabled
+      firewall_mode            = var.waf_configuration.firewall_mode
+      rule_set_type            = var.waf_configuration.rule_set_type
+      rule_set_version         = var.waf_configuration.rule_set_version
+      file_upload_limit_mb     = var.waf_configuration.file_upload_limit_mb
+      max_request_body_size_kb = var.waf_configuration.max_request_body_size_kb
+      request_body_check       = var.waf_configuration.request_body_check
 
-    dynamic "disabled_rule_group" {
-      for_each = var.waf_configuration.disabled_rule_group
-      content {
-        rule_group_name = disabled_rule_group.value.rule_group_name
-        rules           = disabled_rule_group.value.rules
+      dynamic "disabled_rule_group" {
+        for_each = var.waf_configuration.disabled_rule_group
+        content {
+          rule_group_name = disabled_rule_group.value.rule_group_name
+          rules           = disabled_rule_group.value.rules
+        }
       }
-    }
 
-    dynamic "exclusion" {
-      for_each = var.waf_configuration.exclusion
-      content {
-        match_variable          = waf_configuration.exclusion.value.match_variable
-        selector_match_operator = waf_configuration.exclusion.value.selector_match_operator
-        selector                = waf_configuration.exclusion.value.selector
+      dynamic "exclusion" {
+        for_each = var.waf_configuration.exclusion
+        content {
+          match_variable          = waf_configuration.exclusion.value.match_variable
+          selector_match_operator = waf_configuration.exclusion.value.selector_match_operator
+          selector                = waf_configuration.exclusion.value.selector
+        }
       }
     }
   }
 
-  tags       = merge(var.resource_tags, var.deployment_tags)
-  depends_on = [var.it_depends_on]
+  dynamic "identity" {
+    for_each = length(var.identity_ids) != 0 ? [1] : []
+    content {
+      type         = "UserAssigned"
+      identity_ids = var.identity_ids
+    }
+  }
+
+  tags = var.tags
 
 
   timeouts {
@@ -164,10 +191,10 @@ resource "azurerm_application_gateway" "application_gateway" {
     delete = local.timeout_duration_appgateway
   }
 
-  #depends_on = [azurerm_subnet_route_table_association.appgw_rt_associate]
 
   lifecycle {
-    ignore_changes = [
+    ignore_changes = all
+    /* [
       backend_address_pool,
       backend_http_settings,
       frontend_port,
@@ -177,13 +204,8 @@ resource "azurerm_application_gateway" "application_gateway" {
       redirect_configuration,
       url_path_map,
       ssl_certificate,
+      ssl_policy,
       tags,
-    ]
+    ] */
   }
 }
-
-
-
-
-
- 
