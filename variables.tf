@@ -500,16 +500,16 @@ variable "reverse_fqdn" {
   default     = null
 }
 
-variable "appgateway_prefix" {
+/* variable "appgateway_prefix" {
   type        = string
   description = "(Required) Prefix for the appgateway name"
   default     = "agw"
-}
+} */
 
-variable "postfix" {
+/* variable "postfix" {
   type        = string
   description = "(Required) Unique identifies for the resource"
-}
+} */
 
 variable "tags" {
   type        = map(string)
